@@ -1,7 +1,11 @@
-/* Chompkin Arcade: juego completo (laberinto, calabaza, murciélagos, controles, música). Todo original. */
+/* Chompkin AR: el juego se proyecta sobre la hoja impresa (marcadores en las esquinas + homografía). Todo original. */
 (function () {
   'use strict';
-  const $ = (q) => document.querySelector(q), A = window.CA_Audio, cv = $('#gc'), ctx = cv.getContext('2d');
+  const $ = (q) => document.querySelector(q), A = window.CA_Audio, vid = $('#vid'), hcv = $('#gc'), hctx = hcv.getContext('2d'), glc = $('#gl');
+  // Geometría de la hoja (unidades de hoja: 1000 x 1414). Los marcadores son cuadrados negros de 150 en las esquinas.
+  const SW = 1000, SH = 1414, cs = 44, bx = 82, by = 267, GX = 38, GY = 223, GW = 924, GH = 968, SC = 1.25;
+  const MARK = { 0: [[47, 47], [149, 47], [149, 149], [47, 149]], 1: [[851, 47], [953, 47], [953, 149], [851, 149]], 2: [[851, 1265], [953, 1265], [953, 1367], [851, 1367]], 3: [[47, 1265], [149, 1265], [149, 1367], [47, 1367]] };
+  const gtex = document.createElement('canvas'); gtex.width = GW * SC; gtex.height = GH * SC; const ctx = gtex.getContext('2d');
   const MAP = ["###################", "#........#........#", "#o##.###.#.###.##o#", "#.................#", "#.##.#.#####.#.##.#", "#....#...#...#....#", "####.###.#.###.####", "####.#.......#.####", "####.#.##D##.#.####", "      .#   #.      ", "####.#.#   #.#.####", "####.#.#####.#.####", "####.#.......#.####", "####.###.#.###.####", "#....#...#...#....#", "#.##.#.#####.#.##.#", "#.................#", "#o##.###.#.###.##o#", "#........#........#", "###################"];
   const COLS = 19, ROWS = 20, DIRS = [[1, 0], [0, 1], [-1, 0], [0, -1]];
   const BAT_COL = ['#ff3b30', '#ff7ac8', '#25d9ff', '#ff9f1a'], SCATTER = [[16, 1], [2, 1], [17, 18], [1, 18]];
@@ -13,7 +17,7 @@
   const DIST_HOME = bfs(9, 9), DIST_OUT = bfs(9, 7);
 
   // ---------- estado ----------
-  let W = 0, H = 0, dpr = 1, cs = 20, bx = 0, by = 0, top = 60, bot = 54, wallsBlue = null, wallsWhite = null;
+  let W = 0, H = 0, dpr = 1, tracked = false, stream = null;
   let mode = 'title', S = null, hi = 0, last = 0, t = 0, pops = [];
   try { hi = +localStorage.caHi || 0; } catch (e) {}
   const pump = { c: 9, r: 12, nc: 9, nr: 12, prog: 0, moving: false, d: 2, nd: 2, mouth: 0, dying: 0 };
@@ -113,28 +117,7 @@
   }
 
   // ---------- dibujo ----------
-  function layout() {
-    dpr = Math.min(devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    top = Math.max(58, H * 0.075); bot = Math.max(50, H * 0.07);
-    cs = Math.floor(Math.min(W / COLS, (H - top - bot) / ROWS, 44)); bx = Math.round((W - cs * COLS) / 2); by = Math.round(top + (H - top - bot - cs * ROWS) / 2);
-    wallsBlue = buildWalls('#3b55ff', '#a9b8ff'); wallsWhite = buildWalls('#ffffff', '#ffffff');
-  }
-  function buildWalls(glow, core) {
-    const o = document.createElement('canvas'); o.width = cs * COLS * dpr; o.height = cs * ROWS * dpr; const c = o.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const ins = 0.3 * cs, segs = [], Wl = isWall;
-    for (let r = 0; r < ROWS; r++) for (let q = 0; q < COLS; q++) if (Wl(q, r)) {
-      const x = q * cs, y = r * cs, n = Wl(q, r - 1), e = Wl(q + 1, r), s = Wl(q, r + 1), w = Wl(q - 1, r);
-      if (!n) segs.push([x + (w ? (Wl(q - 1, r - 1) ? -ins : 0) : ins), y + ins, x + cs + (e ? (Wl(q + 1, r - 1) ? ins : 0) : -ins), y + ins]);
-      if (!s) segs.push([x + (w ? (Wl(q - 1, r + 1) ? -ins : 0) : ins), y + cs - ins, x + cs + (e ? (Wl(q + 1, r + 1) ? ins : 0) : -ins), y + cs - ins]);
-      if (!w) segs.push([x + ins, y + (n ? (Wl(q - 1, r - 1) ? -ins : 0) : ins), x + ins, y + cs + (s ? (Wl(q - 1, r + 1) ? ins : 0) : -ins)]);
-      if (!e) segs.push([x + cs - ins, y + (n ? (Wl(q + 1, r - 1) ? -ins : 0) : ins), x + cs - ins, y + cs + (s ? (Wl(q + 1, r + 1) ? ins : 0) : -ins)]);
-    }
-    c.lineCap = 'round'; c.lineJoin = 'round';
-    const tr = () => { c.beginPath(); segs.forEach((s) => { c.moveTo(s[0], s[1]); c.lineTo(s[2], s[3]); }); c.stroke(); };
-    c.shadowColor = glow; c.shadowBlur = cs * 0.5; c.strokeStyle = glow; c.lineWidth = Math.max(2, cs * 0.14); tr();
-    c.shadowBlur = 0; c.strokeStyle = core; c.lineWidth = Math.max(1, cs * 0.045); tr();
-    return o;
-  }
+  function layout() { dpr = Math.min(devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight; hcv.width = W * dpr; hcv.height = H * dpr; hctx.setTransform(dpr, 0, 0, dpr, 0, 0); glc.width = W * dpr; glc.height = H * dpr; if (gl) gl.viewport(0, 0, glc.width, glc.height); }
   const X = (fx) => bx + (fx + 0.5) * cs, Y = (fy) => by + (fy + 0.5) * cs;
   function txt(s, x, y, size, col, align, glow) { ctx.font = size + 'px "Arcade Normal",monospace'; ctx.textAlign = align || 'left'; ctx.textBaseline = 'middle'; if (glow) { ctx.shadowColor = glow; ctx.shadowBlur = 12; } ctx.fillStyle = col; ctx.fillText(s, x, y); ctx.shadowBlur = 0; }
   function drawPump(x, y, r, d, mouth, shrink) {
@@ -161,41 +144,93 @@
     if (fr && !eyes) { ctx.strokeStyle = flash ? '#ff2a2a' : '#ffd0d0'; ctx.lineWidth = Math.max(1, r * 0.07); ctx.beginPath(); for (let i = 0; i <= 4; i++) ctx.lineTo(-r * 0.3 + i * r * 0.15, r * 0.2 + (i % 2 ? -r * 0.06 : r * 0.04)); ctx.stroke(); }
     ctx.restore();
   }
+  function htxt(s, x, y, size, col, align, glow) { hctx.font = size + 'px "Arcade Normal",monospace'; hctx.textAlign = align || 'left'; hctx.textBaseline = 'middle'; if (glow) { hctx.shadowColor = glow; hctx.shadowBlur = 10; } hctx.fillStyle = col; hctx.fillText(s, x, y); hctx.shadowBlur = 0; }
   function draw() {
-    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
-    if (!S) { if (mode === 'title') drawDemoBoard(); return; }
-    // HUD
-    const hs = Math.max(10, Math.min(16, W * 0.034));
-    txt('1UP', bx + cs * 0.4, (by - 54), hs, '#fff'); txt(String(S.score).padStart(6, '0'), bx + cs * 0.4, (by - 30), hs, '#fff');
-    txt('RECORD', W / 2, (by - 54), hs, '#fff', 'center'); txt(String(hi).padStart(6, '0'), W / 2, (by - 30), hs, '#fff', 'center');
-    txt('NIVEL', bx + cs * COLS - cs * 0.4, (by - 54), hs, '#fff', 'right'); txt(String(S.level), bx + cs * COLS - cs * 0.4, (by - 30), hs, '#7ff6ff', 'right');
-    for (let i = 0; i < Math.min(S.lives - (S.phase === 'ready' || S.phase === 'play' ? 1 : 0), 6); i++) drawPump(bx + cs * (1 + i * 1.2), (by + cs * ROWS + 30), cs * 0.4, 2, 0, null);
-    txt('DESLIZA PARA MOVER', W / 2 + cs, (by + cs * ROWS + 30), Math.max(7, Math.min(10, W * 0.022)), '#4a5cc8', 'center');
-    // tablero
-    const wl = S.phase === 'win' && Math.floor(S.pt * 5) % 2 === 0 ? wallsWhite : wallsBlue; ctx.drawImage(wl, bx, by, cs * COLS, cs * ROWS);
-    ctx.fillStyle = '#ffb3d9'; ctx.fillRect(bx + 9 * cs + cs * 0.1, by + 8 * cs + cs * 0.42, cs * 0.8, Math.max(2, cs * 0.14));
-    dots.forEach((d) => {
-      if (!d.on) return; const x = X(d.c), y = Y(d.r);
-      if (d.p) { if (Math.floor(t * 4) % 2) return; ctx.shadowColor = '#ffb300'; ctx.shadowBlur = cs * 0.5; ctx.fillStyle = '#ffd24a'; ctx.beginPath(); ctx.arc(x, y, cs * 0.3, 0, 7); ctx.fill(); ctx.shadowBlur = 0; ctx.fillStyle = '#ff8a00'; ctx.beginPath(); ctx.arc(x, y, cs * 0.13, 0, 7); ctx.fill(); }
-      else { ctx.fillStyle = '#ffe3c2'; const q = Math.max(2, cs * 0.14); ctx.fillRect(x - q / 2, y - q / 2, q, q); }
-    });
-    if (S.phase !== 'dying' || pump.dying < 0.3) { /* calabaza */ }
-    if (S.phase === 'dying') { if (pump.dying > 0.4) { const k = Math.min(1, (pump.dying - 0.4) / 1.3), pp = posOf(pump); if (k < 1) drawPump(X(pp.x), Y(pp.y), cs * 0.42 * (1 - k * 0.2), 3, 0, k); } }
-    else { const pp = posOf(pump); drawPump(X(pp.x), Y(pp.y), cs * 0.42, pump.d, pump.mouth, S.phase === 'ready' ? 0.0 : null); }
-    if (!(S.phase === 'dying' && pump.dying > 0.4) || true) bats.forEach((b) => { if (S.phase === 'dying' && pump.dying > 0.4) return; const bp = posOf(b); let yy = Y(bp.y); if (b.mode === 'house') yy += Math.sin(t * 5 + b.i) * cs * 0.08; drawBat(b, X(bp.x), yy, cs * 0.4); });
-    pops.forEach((p) => txt(String(p.s), X(p.x), Y(p.y) - (1 - p.t) * cs * 0.6, Math.max(8, cs * 0.45), '#7ff6ff', 'center', '#25d9ff'));
-    if (S.phase === 'ready') txt('LISTOS!', X(9), Y(11.2), Math.max(10, cs * 0.75), '#ffd400', 'center', '#ff9d00');
-    if (S.phase === 'over') { txt('FIN DEL JUEGO', X(9), Y(11.2), Math.max(10, cs * 0.75), '#ff2b2b', 'center', '#ff1a1a'); if (Math.floor(t * 2) % 2) txt('TOCA PARA JUGAR', W / 2, (by + cs * ROWS + 30), Math.max(8, cs * 0.5), '#fff', 'center'); }
-    if (S.flash > 0) { ctx.fillStyle = 'rgba(255,0,60,' + S.flash + ')'; ctx.fillRect(0, 0, W, H); }
+    // 1) juego en el espacio de la hoja (textura transparente)
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, gtex.width, gtex.height); ctx.setTransform(SC, 0, 0, SC, -GX * SC, -GY * SC);
+    if (S) {
+      dots.forEach((d) => {
+        if (!d.on) return; const x = X(d.c), y = Y(d.r);
+        if (d.p) { if (Math.floor(t * 4) % 2) return; ctx.shadowColor = '#ffb300'; ctx.shadowBlur = cs * 0.5; ctx.fillStyle = '#ffd24a'; ctx.beginPath(); ctx.arc(x, y, cs * 0.3, 0, 7); ctx.fill(); ctx.shadowBlur = 0; ctx.fillStyle = '#ff8a00'; ctx.beginPath(); ctx.arc(x, y, cs * 0.13, 0, 7); ctx.fill(); }
+        else { ctx.fillStyle = '#ffe3c2'; const q = Math.max(2, cs * 0.14); ctx.fillRect(x - q / 2, y - q / 2, q, q); }
+      });
+      if (S.phase === 'dying') { if (pump.dying > 0.4) { const k = Math.min(1, (pump.dying - 0.4) / 1.3), pp = posOf(pump); if (k < 1) drawPump(X(pp.x), Y(pp.y), cs * 0.42 * (1 - k * 0.2), 3, 0, k); } }
+      else { const pp = posOf(pump); drawPump(X(pp.x), Y(pp.y), cs * 0.42, pump.d, pump.mouth, S.phase === 'ready' ? 0.0 : null); }
+      bats.forEach((b) => { if (S.phase === 'dying' && pump.dying > 0.4) return; const bp = posOf(b); let yy = Y(bp.y); if (b.mode === 'house') yy += Math.sin(t * 5 + b.i) * cs * 0.08; drawBat(b, X(bp.x), yy, cs * 0.4); });
+      pops.forEach((p) => txt(String(p.s), X(p.x), Y(p.y) - (1 - p.t) * cs * 0.6, 20, '#7ff6ff', 'center', '#25d9ff'));
+      if (S.phase === 'ready') txt('LISTOS!', X(9), Y(11.2), 32, '#ffd400', 'center', '#ff9d00');
+      if (S.phase === 'over') txt('FIN DEL JUEGO', X(9), Y(11.2), 28, '#ff2b2b', 'center', '#ff1a1a');
+      if (S.phase === 'win' && Math.floor(S.pt * 5) % 2 === 0) { ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(bx, by, cs * COLS, cs * ROWS); }
+      if (S.flash > 0) { ctx.fillStyle = 'rgba(255,0,60,' + S.flash * 0.6 + ')'; ctx.fillRect(bx, by, cs * COLS, cs * ROWS); }
+    }
+    // 2) HUD en pantalla
+    hctx.clearRect(0, 0, W, H);
+    if (mode !== 'game') return;
+    const hs = Math.max(10, Math.min(15, W * 0.032)), y1 = 26 + (window.visualViewport ? 0 : 0), y2 = y1 + hs * 1.7;
+    if (S) {
+      htxt('1UP', 14, y1, hs, '#fff', 'left', '#000'); htxt(String(S.score).padStart(6, '0'), 14, y2, hs, '#fff', 'left', '#000');
+      htxt('RECORD', W / 2, y1, hs, '#fff', 'center', '#000'); htxt(String(hi).padStart(6, '0'), W / 2, y2, hs, '#fff', 'center', '#000');
+      htxt('NIVEL', W - 14, y1, hs, '#fff', 'right', '#000'); htxt(String(S.level), W - 14, y2, hs, '#7ff6ff', 'right', '#000');
+      const n = Math.min(S.lives - (S.phase === 'ready' || S.phase === 'play' ? 1 : 0), 6); for (let i = 0; i < n; i++) { hctx.save(); hctx.translate(26 + i * 30, H - 30); drawPumpOn(hctx, 11); hctx.restore(); }
+      if (S.phase === 'over') { if (Math.floor(t * 2) % 2) htxt('TOCA PARA JUGAR', W / 2, H - 50, 11, '#fff', 'center', '#000'); }
+    }
+    if (!tracked) { hctx.fillStyle = 'rgba(0,0,20,.55)'; hctx.fillRect(0, H * 0.4, W, 110); htxt('APUNTA AL LABERINTO IMPRESO', W / 2, H * 0.4 + 36, Math.min(14, W * 0.034), '#ffd400', 'center', '#ff9d00'); htxt('DEBEN VERSE LOS 4 CUADROS NEGROS', W / 2, H * 0.4 + 72, Math.min(10, W * 0.025), '#7ff6ff', 'center'); }
   }
-  function drawDemoBoard() { if (!wallsBlue) return; ctx.globalAlpha = 0.45; ctx.drawImage(wallsBlue, bx, by, cs * COLS, cs * ROWS); ctx.globalAlpha = 1; }
+  function drawPumpOn(c, r) { const g = c.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.1, 0, 0, r * 1.05); g.addColorStop(0, '#ffb347'); g.addColorStop(1, '#c84b00'); c.fillStyle = g; c.beginPath(); c.arc(0, 0, r, 0.5, Math.PI * 2 - 0.5); c.lineTo(0, 0); c.fill(); c.fillStyle = '#3d8f2a'; c.fillRect(-r * 0.1, -r * 1.15, r * 0.2, r * 0.3); }
+
+  // ---------- seguimiento de la hoja (marcadores -> homografía) y proyección WebGL ----------
+  let gl = null, prog = null, tex = null, buf = null, Hm = null, lastSeen = -9, det = null, busy = false;
+  function glInit() {
+    gl = glc.getContext('webgl', { premultipliedAlpha: true, alpha: true }) || glc.getContext('experimental-webgl'); if (!gl) return;
+    const vs = 'attribute vec2 a_uv;uniform mat3 u_H;uniform vec2 u_res;uniform vec4 u_rect;varying vec2 v_uv;void main(){vec3 p=u_H*vec3(u_rect.xy+a_uv*u_rect.zw,1.);gl_Position=vec4(p.x*2./u_res.x-p.z,p.z-p.y*2./u_res.y,0.,p.z);v_uv=a_uv;}';
+    const fs = 'precision mediump float;uniform sampler2D u_tex;varying vec2 v_uv;void main(){gl_FragColor=texture2D(u_tex,v_uv);}';
+    const mk = (t, s) => { const o = gl.createShader(t); gl.shaderSource(o, s); gl.compileShader(o); return o; };
+    prog = gl.createProgram(); gl.attachShader(prog, mk(gl.VERTEX_SHADER, vs)); gl.attachShader(prog, mk(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(prog); gl.useProgram(prog);
+    buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(prog, 'a_uv'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.viewport(0, 0, glc.width, glc.height);
+  }
+  function solve(pairs) {   // homografía por mínimos cuadrados (DLT con h33 = 1), coordenadas de hoja / 1000
+    const M = Array.from({ length: 8 }, () => new Array(9).fill(0));
+    pairs.forEach(([sx, sy, u, v]) => { const x = sx / 1000, y = sy / 1000, r1 = [x, y, 1, 0, 0, 0, -u * x, -u * y], r2 = [0, 0, 0, x, y, 1, -v * x, -v * y];
+      for (let i = 0; i < 8; i++) { for (let j = 0; j < 8; j++) M[i][j] += r1[i] * r1[j] + r2[i] * r2[j]; M[i][8] += r1[i] * u + r2[i] * v; } });
+    for (let i = 0; i < 8; i++) { let p = i; for (let k = i + 1; k < 8; k++) if (Math.abs(M[k][i]) > Math.abs(M[p][i])) p = k; [M[i], M[p]] = [M[p], M[i]]; if (Math.abs(M[i][i]) < 1e-12) return null;
+      for (let k = 0; k < 8; k++) if (k !== i) { const f = M[k][i] / M[i][i]; for (let j = i; j < 9; j++) M[k][j] -= f * M[i][j]; } }
+    const h = M.map((r, i) => r[8] / r[i]); return [h[0] / 1000, h[1] / 1000, h[2], h[3] / 1000, h[4] / 1000, h[5], h[6] / 1000, h[7] / 1000, 1];   // sale en orden fila: pantalla = H * (hoja,1)
+  }
+  const small = document.createElement('canvas'), sctx = small.getContext('2d', { willReadFrequently: true });
+  function detect() {
+    if (busy || !det || !vid.videoWidth) return; busy = true;
+    try {
+      const vw = vid.videoWidth, vh = vid.videoHeight, sw = 640, sh = Math.round(vh * sw / vw); small.width = sw; small.height = sh; sctx.drawImage(vid, 0, 0, sw, sh);
+      const mk = det.detect(sctx.getImageData(0, 0, sw, sh)), s = Math.max(W / vw, H / vh), ox = (W - vw * s) / 2, oy = (H - vh * s) / 2, pairs = [];
+      mk.forEach((m) => { const g = MARK[m.id]; if (!g) return; m.corners.forEach((c, k) => pairs.push([g[k][0], g[k][1], (c.x * vw / sw) * s + ox, (c.y * vh / sh) * s + oy])); });
+      if (pairs.length >= 4) { const h = solve(pairs); if (h && isFinite(h[0])) { Hm = Hm && performance.now() / 1000 - lastSeen < 0.5 ? Hm.map((v, i) => v + (h[i] - v) * 0.65) : h; lastSeen = performance.now() / 1000; } }
+    } catch (e) {}
+    busy = false;
+  }
+  function project() {
+    if (!gl || !Hm || !tracked) { if (gl) { gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT); } return; }
+    gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, gtex);
+    const H = Hm, d = dpr, m = [H[0] * d, H[3] * d, H[6], H[1] * d, H[4] * d, H[7], H[2] * d, H[5] * d, H[8]];   // columnas (GLSL) y px de dispositivo
+    gl.uniformMatrix3fv(gl.getUniformLocation(prog, 'u_H'), false, new Float32Array(m)); gl.uniform2f(gl.getUniformLocation(prog, 'u_res'), glc.width, glc.height); gl.uniform4f(gl.getUniformLocation(prog, 'u_rect'), GX, GY, GW, GH);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+  async function camStart() {
+    try { stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false }); }
+    catch (e) { alert('No pudimos usar la cámara. Permite el acceso y vuelve a intentar.'); return false; }
+    vid.srcObject = stream; try { await vid.play(); } catch (e) {} return true;
+  }
 
   // ---------- entrada ----------
   const KEYS = { ArrowRight: 0, ArrowDown: 1, ArrowLeft: 2, ArrowUp: 3, d: 0, s: 1, a: 2, w: 3, D: 0, S: 1, A: 2, W: 3 };
   addEventListener('keydown', (e) => { if (e.key in KEYS) { pump.nd = KEYS[e.key]; e.preventDefault(); } if ((e.key === ' ' || e.key === 'Enter') && mode === 'game' && S && S.phase === 'over') newGame(); });
   let tx = 0, ty = 0;
-  cv.addEventListener('pointerdown', (e) => { tx = e.clientX; ty = e.clientY; if (mode === 'game' && S && S.phase === 'over') newGame(); });
-  cv.addEventListener('pointermove', (e) => { if (e.buttons === 0 && e.pointerType === 'mouse') return; const dx = e.clientX - tx, dy = e.clientY - ty; if (Math.abs(dx) < 14 && Math.abs(dy) < 14) return; pump.nd = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 0 : 2) : (dy > 0 ? 1 : 3); tx = e.clientX; ty = e.clientY; });
+  document.addEventListener('pointerdown', (e) => { tx = e.clientX; ty = e.clientY; if (mode === 'game' && S && S.phase === 'over' && !e.target.closest('button')) newGame(); });
+  document.addEventListener('pointermove', (e) => { if (e.buttons === 0 && e.pointerType === 'mouse') return; const dx = e.clientX - tx, dy = e.clientY - ty; if (Math.abs(dx) < 14 && Math.abs(dy) < 14) return; pump.nd = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 0 : 2) : (dy > 0 ? 1 : 3); tx = e.clientX; ty = e.clientY; });
 
   // ---------- música: video de YouTube incrustado (oculto); respaldo = música por código ----------
   const YT_ID = 'hDB6oRx4InQ'; let yt = null, ytPlaying = false, gesture = false;
@@ -213,11 +248,11 @@
   $('#bMute').onclick = (e) => { e.stopPropagation(); A.setMuted(!A.isMuted()); syncMute(); A.start(); applyMusic(); };
   try { A.start(); } catch (e) {}
 
-  $('#play').onclick = () => { wake(); $('#intro').classList.add('hidden'); mode = 'game'; newGame(); };
+  $('#play').onclick = async () => { wake(); if (!(await camStart())) return; $('#intro').classList.add('hidden'); try { det = new AR.Detector({ dictionaryName: 'ARUCO_4X4_1000' }); } catch (e) {} mode = 'game'; newGame(); setInterval(detect, 45); };
   document.querySelectorAll('h1').forEach((h) => { const out = []; h.childNodes.forEach((n) => { const em = n.nodeName === 'EM'; [...n.textContent].forEach((c, i) => { const sp = document.createElement('span'); sp.textContent = c; sp.className = 'ltr' + (em ? ' y' : ''); sp.style.animationDelay = (out.length + i) * 0.09 + 's'; out.push(sp); }); }); h.textContent = ''; out.forEach((x) => h.appendChild(x)); });
 
-  addEventListener('resize', layout); layout();
-  function loop(ts) { requestAnimationFrame(loop); const n = ts / 1000; t = n; const dt = Math.min(0.05, n - last || 0.016); last = n; update(dt); draw(); }
+  glInit(); addEventListener('resize', layout); layout();
+  function loop(ts) { requestAnimationFrame(loop); const n = ts / 1000; t = n; const dt = Math.min(0.05, n - last || 0.016); last = n; tracked = !!Hm && performance.now() / 1000 - lastSeen < 0.45; if (tracked) update(dt); draw(); project(); }
   requestAnimationFrame(loop);
-  if (DEBUG) window.__CA = { get S() { return S; }, pump, get bats() { return bats; }, get dots() { return dots; }, newGame };
+  if (DEBUG) window.__CA = { get Hm() { return Hm; }, get tracked() { return tracked; }, get S() { return S; }, pump, get bats() { return bats; }, get dots() { return dots; }, newGame };
 })();
