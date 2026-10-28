@@ -8,8 +8,8 @@
   const gtex = document.createElement('canvas'); gtex.width = GW * SC; gtex.height = GH * SC; const ctx = gtex.getContext('2d');
   const MAP = ["###################", "#........#........#", "#o##.###.#.###.##o#", "#.................#", "#.##.#.#####.#.##.#", "#....#...#...#....#", "####.###.#.###.####", "####.#.......#.####", "####.#.##D##.#.####", "      .#   #.      ", "####.#.#   #.#.####", "####.#.#####.#.####", "####.#.......#.####", "####.###.#.###.####", "#....#...#...#....#", "#.##.#.#####.#.##.#", "#.................#", "#o##.###.#.###.##o#", "#........#........#", "###################"];
   const COLS = 19, ROWS = 20, DIRS = [[1, 0], [0, 1], [-1, 0], [0, -1]];
-  const BAT_COL = ['#ff3b30', '#ff7ac8', '#25d9ff', '#ff9f1a'], SCATTER = [[16, 1], [2, 1], [17, 18], [1, 18]];
-  const DEBUG = new URLSearchParams(location.search).has('debug');
+  const BAT_COL = ['#e0102a', '#c4009a', '#0a8f9e', '#ff7a00'], SCATTER = [[16, 1], [2, 1], [17, 18], [1, 18]];
+  const DEBUG = new URLSearchParams(location.search).has('debug'), ALIGN = new URLSearchParams(location.search).has('align');
   const ch = (c, r) => MAP[r][((c % COLS) + COLS) % COLS];
   const isWall = (c, r) => r >= 0 && r < ROWS && c >= 0 && c < COLS && MAP[r][c] === '#';
   function nbrs(c, r, door) { const o = []; DIRS.forEach((d, k) => { const nc = (c + d[0] + COLS) % COLS, nr = r + d[1]; if (nr < 0 || nr >= ROWS) return; const t = MAP[nr][nc]; if (t === '#' || (t === 'D' && !door)) return; o.push({ k, c: nc, r: nr }); }); return o; }
@@ -117,23 +117,23 @@
   }
 
   // ---------- dibujo ----------
-  function layout() { dpr = Math.min(devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight; hcv.width = W * dpr; hcv.height = H * dpr; hctx.setTransform(dpr, 0, 0, dpr, 0, 0); glc.width = W * dpr; glc.height = H * dpr; if (gl) gl.viewport(0, 0, glc.width, glc.height); }
+  function layout() { dpr = Math.min(devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight; hcv.width = W * dpr; hcv.height = H * dpr; hctx.setTransform(dpr, 0, 0, dpr, 0, 0); const rc = glc.getBoundingClientRect(); glc.width = Math.round((rc.width || W) * dpr); glc.height = Math.round((rc.height || H) * dpr); if (gl) gl.viewport(0, 0, glc.width, glc.height); }
   const X = (fx) => bx + (fx + 0.5) * cs, Y = (fy) => by + (fy + 0.5) * cs;
   function txt(s, x, y, size, col, align, glow) { ctx.font = size + 'px "Arcade Normal",monospace'; ctx.textAlign = align || 'left'; ctx.textBaseline = 'middle'; if (glow) { ctx.shadowColor = glow; ctx.shadowBlur = 12; } ctx.fillStyle = col; ctx.fillText(s, x, y); ctx.shadowBlur = 0; }
   function drawPump(x, y, r, d, mouth, shrink) {
     ctx.save(); ctx.translate(x, y); ctx.rotate(d * Math.PI / 2);
     let open = shrink != null ? 0.2 + shrink * Math.PI * 0.8 : 0.08 + Math.abs(Math.sin(mouth * 3.2)) * 0.62; if (open > Math.PI) open = Math.PI;
-    const g = ctx.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.1, 0, 0, r * 1.05); g.addColorStop(0, '#ffb347'); g.addColorStop(0.6, '#ff7a00'); g.addColorStop(1, '#c84b00');
-    ctx.shadowColor = '#ff8a00'; ctx.shadowBlur = r * 0.7; ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, r, open, Math.PI * 2 - open); ctx.closePath(); ctx.fill(); ctx.shadowBlur = 0;
-    ctx.strokeStyle = 'rgba(120,40,0,.55)'; ctx.lineWidth = Math.max(1, r * 0.07); [-0.45, 0.45].forEach((k) => { ctx.beginPath(); ctx.ellipse(0, 0, r * Math.abs(k) * 1.6 + r * 0.08, r * 0.98, 0, -1.3, 1.3); ctx.stroke(); });
-    ctx.rotate(-d * Math.PI / 2); ctx.fillStyle = '#2a1200'; ctx.beginPath(); ctx.moveTo(-r * 0.3, -r * 0.32); ctx.lineTo(-r * 0.05, -r * 0.5); ctx.lineTo(-r * 0.05, -r * 0.2); ctx.fill();
-    ctx.fillStyle = '#3d8f2a'; ctx.fillRect(-r * 0.1, -r * 1.18, r * 0.2, r * 0.3); ctx.restore();
+    const g = ctx.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.1, 0, 0, r * 1.05); g.addColorStop(0, '#4a4a55'); g.addColorStop(0.55, '#15151c'); g.addColorStop(1, '#000');
+    ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = r * 0.45; ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, r, open, Math.PI * 2 - open); ctx.closePath(); ctx.fill(); ctx.shadowBlur = 0;
+    ctx.strokeStyle = 'rgba(255,255,255,.22)'; ctx.lineWidth = Math.max(1, r * 0.07); [-0.45, 0.45].forEach((k) => { ctx.beginPath(); ctx.ellipse(0, 0, r * Math.abs(k) * 1.6 + r * 0.08, r * 0.98, 0, -1.3, 1.3); ctx.stroke(); });
+    ctx.rotate(-d * Math.PI / 2); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(-r * 0.3, -r * 0.32); ctx.lineTo(-r * 0.05, -r * 0.5); ctx.lineTo(-r * 0.05, -r * 0.2); ctx.fill();
+    ctx.fillStyle = '#1f7a14'; ctx.fillRect(-r * 0.1, -r * 1.18, r * 0.2, r * 0.3); ctx.restore();
   }
   function drawBat(b, x, y, r) {
-    const fr = b.fright > 0, flash = fr && b.fright < 1.8 && Math.floor(t * 8) % 2 === 0, col = fr ? (flash ? '#ffffff' : '#2a3bff') : BAT_COL[b.i], eyes = b.mode === 'eaten';
+    const fr = b.fright > 0, flash = fr && b.fright < 1.8 && Math.floor(t * 8) % 2 === 0, col = fr ? (flash ? '#111' : '#2a3bff') : BAT_COL[b.i], eyes = b.mode === 'eaten';
     ctx.save(); ctx.translate(x, y);
     if (!eyes) {
-      const wy = Math.sin(b.flap) * r * 0.28; ctx.fillStyle = col; ctx.shadowColor = col; ctx.shadowBlur = r * 0.6;
+      const wy = Math.sin(b.flap) * r * 0.28; ctx.fillStyle = col; ctx.shadowColor = col; ctx.shadowBlur = r * 0.35;
       ctx.beginPath(); ctx.moveTo(-r * 0.3, -r * 0.1);
       ctx.quadraticCurveTo(-r * 1.0, -r * 0.7 - wy, -r * 1.25, -r * 0.1 - wy); ctx.lineTo(-r * 1.05, r * 0.15 - wy * 0.6); ctx.lineTo(-r * 0.85, r * 0.0); ctx.lineTo(-r * 0.65, r * 0.35); ctx.lineTo(-r * 0.4, r * 0.15); ctx.lineTo(-r * 0.2, r * 0.5);
       ctx.lineTo(r * 0.2, r * 0.5); ctx.lineTo(r * 0.4, r * 0.15); ctx.lineTo(r * 0.65, r * 0.35); ctx.lineTo(r * 0.85, r * 0.0); ctx.lineTo(r * 1.05, r * 0.15 - wy * 0.6); ctx.lineTo(r * 1.25, -r * 0.1 - wy);
@@ -148,19 +148,20 @@
   function draw() {
     // 1) juego en el espacio de la hoja (textura transparente)
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, gtex.width, gtex.height); ctx.setTransform(SC, 0, 0, SC, -GX * SC, -GY * SC);
+    if (ALIGN) { ctx.strokeStyle = '#ff2a2a'; ctx.lineWidth = 1.5; ctx.strokeRect(bx, by, cs * COLS, cs * ROWS); ctx.beginPath(); for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (MAP[r][c] !== '#') { ctx.moveTo(X(c) - 6, Y(r)); ctx.lineTo(X(c) + 6, Y(r)); ctx.moveTo(X(c), Y(r) - 6); ctx.lineTo(X(c), Y(r) + 6); } ctx.stroke(); }
     if (S) {
       dots.forEach((d) => {
         if (!d.on) return; const x = X(d.c), y = Y(d.r);
-        if (d.p) { if (Math.floor(t * 4) % 2) return; ctx.shadowColor = '#ffb300'; ctx.shadowBlur = cs * 0.5; ctx.fillStyle = '#ffd24a'; ctx.beginPath(); ctx.arc(x, y, cs * 0.3, 0, 7); ctx.fill(); ctx.shadowBlur = 0; ctx.fillStyle = '#ff8a00'; ctx.beginPath(); ctx.arc(x, y, cs * 0.13, 0, 7); ctx.fill(); }
-        else { ctx.fillStyle = '#ffe3c2'; const q = Math.max(2, cs * 0.14); ctx.fillRect(x - q / 2, y - q / 2, q, q); }
+        if (d.p) { if (Math.floor(t * 4) % 2) return; ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(x, y, cs * 0.3, 0, 7); ctx.fill(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x, y, cs * 0.11, 0, 7); ctx.fill(); }
+        else { ctx.fillStyle = '#000'; const q = Math.max(2, cs * 0.14); ctx.fillRect(x - q / 2, y - q / 2, q, q); }
       });
       if (S.phase === 'dying') { if (pump.dying > 0.4) { const k = Math.min(1, (pump.dying - 0.4) / 1.3), pp = posOf(pump); if (k < 1) drawPump(X(pp.x), Y(pp.y), cs * 0.42 * (1 - k * 0.2), 3, 0, k); } }
       else { const pp = posOf(pump); drawPump(X(pp.x), Y(pp.y), cs * 0.42, pump.d, pump.mouth, S.phase === 'ready' ? 0.0 : null); }
       bats.forEach((b) => { if (S.phase === 'dying' && pump.dying > 0.4) return; const bp = posOf(b); let yy = Y(bp.y); if (b.mode === 'house') yy += Math.sin(t * 5 + b.i) * cs * 0.08; drawBat(b, X(bp.x), yy, cs * 0.4); });
-      pops.forEach((p) => txt(String(p.s), X(p.x), Y(p.y) - (1 - p.t) * cs * 0.6, 20, '#7ff6ff', 'center', '#25d9ff'));
-      if (S.phase === 'ready') txt('LISTOS!', X(9), Y(11.2), 32, '#ffd400', 'center', '#ff9d00');
-      if (S.phase === 'over') txt('FIN DEL JUEGO', X(9), Y(11.2), 28, '#ff2b2b', 'center', '#ff1a1a');
-      if (S.phase === 'win' && Math.floor(S.pt * 5) % 2 === 0) { ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(bx, by, cs * COLS, cs * ROWS); }
+      pops.forEach((p) => txt(String(p.s), X(p.x), Y(p.y) - (1 - p.t) * cs * 0.6, 20, '#006e7a', 'center', 'rgba(255,255,255,.9)'));
+      if (S.phase === 'ready') txt('LISTOS!', X(9), Y(11.2), 32, '#d4006a', 'center', 'rgba(255,255,255,.9)');
+      if (S.phase === 'over') txt('FIN DEL JUEGO', X(9), Y(11.2), 28, '#c80000', 'center', 'rgba(255,255,255,.9)');
+      if (S.phase === 'win' && Math.floor(S.pt * 5) % 2 === 0) { ctx.fillStyle = 'rgba(40,60,255,.14)'; ctx.fillRect(bx, by, cs * COLS, cs * ROWS); }
       if (S.flash > 0) { ctx.fillStyle = 'rgba(255,0,60,' + S.flash * 0.6 + ')'; ctx.fillRect(bx, by, cs * COLS, cs * ROWS); }
     }
     // 2) HUD en pantalla
@@ -168,18 +169,18 @@
     if (mode !== 'game') return;
     const hs = Math.max(10, Math.min(15, W * 0.032)), y1 = 26 + (window.visualViewport ? 0 : 0), y2 = y1 + hs * 1.7;
     if (S) {
-      htxt('1UP', 14, y1, hs, '#fff', 'left', '#000'); htxt(String(S.score).padStart(6, '0'), 14, y2, hs, '#fff', 'left', '#000');
-      htxt('RECORD', W / 2, y1, hs, '#fff', 'center', '#000'); htxt(String(hi).padStart(6, '0'), W / 2, y2, hs, '#fff', 'center', '#000');
-      htxt('NIVEL', W - 14, y1, hs, '#fff', 'right', '#000'); htxt(String(S.level), W - 14, y2, hs, '#7ff6ff', 'right', '#000');
+      htxt('1UP', 14, y1, hs, '#0b1470', 'left', '#fff'); htxt(String(S.score).padStart(6, '0'), 14, y2, hs, '#0b1470', 'left', '#fff');
+      htxt('RECORD', W / 2, y1, hs, '#0b1470', 'center', '#fff'); htxt(String(hi).padStart(6, '0'), W / 2, y2, hs, '#0b1470', 'center', '#fff');
+      htxt('NIVEL', W - 14, y1, hs, '#0b1470', 'right', '#fff'); htxt(String(S.level), W - 14, y2, hs, '#006e7a', 'right', '#fff');
       const n = Math.min(S.lives - (S.phase === 'ready' || S.phase === 'play' ? 1 : 0), 6); for (let i = 0; i < n; i++) { hctx.save(); hctx.translate(26 + i * 30, H - 30); drawPumpOn(hctx, 11); hctx.restore(); }
-      if (S.phase === 'over') { if (Math.floor(t * 2) % 2) htxt('TOCA PARA JUGAR', W / 2, H - 50, 11, '#fff', 'center', '#000'); }
+      if (S.phase === 'over') { if (Math.floor(t * 2) % 2) htxt('TOCA PARA JUGAR', W / 2, H - 50, 11, '#0b1470', 'center', '#fff'); }
     }
     if (!tracked) { hctx.fillStyle = 'rgba(0,0,20,.55)'; hctx.fillRect(0, H * 0.4, W, 110); htxt('APUNTA AL LABERINTO IMPRESO', W / 2, H * 0.4 + 36, Math.min(14, W * 0.034), '#ffd400', 'center', '#ff9d00'); htxt('DEBEN VERSE LOS 4 CUADROS NEGROS', W / 2, H * 0.4 + 72, Math.min(10, W * 0.025), '#7ff6ff', 'center'); }
   }
-  function drawPumpOn(c, r) { const g = c.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.1, 0, 0, r * 1.05); g.addColorStop(0, '#ffb347'); g.addColorStop(1, '#c84b00'); c.fillStyle = g; c.beginPath(); c.arc(0, 0, r, 0.5, Math.PI * 2 - 0.5); c.lineTo(0, 0); c.fill(); c.fillStyle = '#3d8f2a'; c.fillRect(-r * 0.1, -r * 1.15, r * 0.2, r * 0.3); }
+  function drawPumpOn(c, r) { const g = c.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.1, 0, 0, r * 1.05); g.addColorStop(0, '#4a4a55'); g.addColorStop(1, '#000'); c.fillStyle = g; c.beginPath(); c.arc(0, 0, r, 0.5, Math.PI * 2 - 0.5); c.lineTo(0, 0); c.fill(); c.fillStyle = '#1f7a14'; c.fillRect(-r * 0.1, -r * 1.15, r * 0.2, r * 0.3); }
 
   // ---------- seguimiento de la hoja (marcadores -> homografía) y proyección WebGL ----------
-  let gl = null, prog = null, tex = null, buf = null, Hm = null, lastSeen = -9, det = null, busy = false;
+  let gl = null, prog = null, tex = null, buf = null, vprog = null, vbuf = null, vtex = null, Hm = null, lastSeen = -9, det = null, busy = false;
   function glInit() {
     gl = glc.getContext('webgl', { premultipliedAlpha: true, alpha: true }) || glc.getContext('experimental-webgl'); if (!gl) return;
     const vs = 'attribute vec2 a_uv;uniform mat3 u_H;uniform vec2 u_res;uniform vec4 u_rect;varying vec2 v_uv;void main(){vec3 p=u_H*vec3(u_rect.xy+a_uv*u_rect.zw,1.);gl_Position=vec4(p.x*2./u_res.x-p.z,p.z-p.y*2./u_res.y,0.,p.z);v_uv=a_uv;}';
@@ -188,6 +189,10 @@
     prog = gl.createProgram(); gl.attachShader(prog, mk(gl.VERTEX_SHADER, vs)); gl.attachShader(prog, mk(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(prog); gl.useProgram(prog);
     buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), gl.STATIC_DRAW);
     const loc = gl.getAttribLocation(prog, 'a_uv'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    const vvs = 'attribute vec2 a_p;attribute vec2 a_t;varying vec2 v_t;void main(){gl_Position=vec4(a_p,0.,1.);v_t=a_t;}';
+    vprog = gl.createProgram(); gl.attachShader(vprog, mk(gl.VERTEX_SHADER, vvs)); gl.attachShader(vprog, mk(gl.FRAGMENT_SHADER, 'precision mediump float;uniform sampler2D u_tex;varying vec2 v_t;void main(){gl_FragColor=vec4(texture2D(u_tex,v_t).rgb,1.);}')); gl.linkProgram(vprog);
+    vbuf = gl.createBuffer(); vtex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, vtex);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.viewport(0, 0, glc.width, glc.height);
@@ -205,18 +210,27 @@
     if (busy || !det || !vid.videoWidth) return; busy = true;
     try {
       const vw = vid.videoWidth, vh = vid.videoHeight, sw = 640, sh = Math.round(vh * sw / vw); small.width = sw; small.height = sh; sctx.drawImage(vid, 0, 0, sw, sh);
-      const mk = det.detect(sctx.getImageData(0, 0, sw, sh)), s = Math.max(W / vw, H / vh), ox = (W - vw * s) / 2, oy = (H - vh * s) / 2, pairs = [];
-      mk.forEach((m) => { const g = MARK[m.id]; if (!g) return; m.corners.forEach((c, k) => pairs.push([g[k][0], g[k][1], (c.x * vw / sw) * s + ox, (c.y * vh / sh) * s + oy])); });
+      const mk = det.detect(sctx.getImageData(0, 0, sw, sh)), pairs = [];
+      mk.forEach((m) => { const g = MARK[m.id]; if (!g) return; const cx = m.corners.reduce((a, c) => a + c.x, 0) / 4 + 0.5, cy = m.corners.reduce((a, c) => a + c.y, 0) / 4 + 0.5;
+        m.corners.forEach((c, k) => { const x = c.x + 0.5, y = c.y + 0.5, l = Math.hypot(x - cx, y - cy) || 1, ex = x + (x - cx) / l * 0.5, ey = y + (y - cy) / l * 0.5; pairs.push([g[k][0], g[k][1], ex * vw / sw, ey * vh / sh]); }); });
       if (pairs.length >= 4) { const h = solve(pairs); if (h && isFinite(h[0])) { Hm = Hm && performance.now() / 1000 - lastSeen < 0.5 ? Hm.map((v, i) => v + (h[i] - v) * 0.65) : h; lastSeen = performance.now() / 1000; } }
     } catch (e) {}
     busy = false;
   }
   function project() {
-    if (!gl || !Hm || !tracked) { if (gl) { gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT); } return; }
-    gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, gtex);
-    const H = Hm, d = dpr, m = [H[0] * d, H[3] * d, H[6], H[1] * d, H[4] * d, H[7], H[2] * d, H[5] * d, H[8]];   // columnas (GLSL) y px de dispositivo
-    gl.uniformMatrix3fv(gl.getUniformLocation(prog, 'u_H'), false, new Float32Array(m)); gl.uniform2f(gl.getUniformLocation(prog, 'u_res'), glc.width, glc.height); gl.uniform4f(gl.getUniformLocation(prog, 'u_rect'), GX, GY, GW, GH);
+    if (!gl) return; const cw = glc.width, ch = glc.height, vw = vid.videoWidth, vh = vid.videoHeight; if (!vw || vid.readyState < 2) return;
+    const sc = Math.max(cw / vw, ch / vh), ox = (cw - vw * sc) / 2, oy = (ch - vh * sc) / 2, hw = vw * sc / cw, hh = vh * sc / ch;
+    gl.disable(gl.BLEND); gl.useProgram(vprog); gl.bindBuffer(gl.ARRAY_BUFFER, vbuf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-hw, hh, 0, 0, hw, hh, 1, 0, -hw, -hh, 0, 1, hw, -hh, 1, 1]), gl.DYNAMIC_DRAW);
+    const lp = gl.getAttribLocation(vprog, 'a_p'), lt = gl.getAttribLocation(vprog, 'a_t'); gl.enableVertexAttribArray(lp); gl.vertexAttribPointer(lp, 2, gl.FLOAT, false, 16, 0); gl.enableVertexAttribArray(lt); gl.vertexAttribPointer(lt, 2, gl.FLOAT, false, 16, 8);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, vtex); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, vid); gl.uniform1i(gl.getUniformLocation(vprog, 'u_tex'), 0);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); gl.disableVertexAttribArray(lt);
+    if (!Hm || !tracked) return;
+    // hoja -> pixeles de video -> pixeles del canvas (misma transformacion que el video de fondo)
+    const h = Hm, r0 = [sc * h[0] + ox * h[6], sc * h[1] + ox * h[7], sc * h[2] + ox * h[8]], r1 = [sc * h[3] + oy * h[6], sc * h[4] + oy * h[7], sc * h[5] + oy * h[8]], m = [r0[0], r1[0], h[6], r0[1], r1[1], h[7], r0[2], r1[2], h[8]];
+    gl.useProgram(prog); gl.enable(gl.BLEND); gl.bindBuffer(gl.ARRAY_BUFFER, buf); const la = gl.getAttribLocation(prog, 'a_uv'); gl.enableVertexAttribArray(la); gl.vertexAttribPointer(la, 2, gl.FLOAT, false, 0, 0);
+    gl.bindTexture(gl.TEXTURE_2D, tex); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, gtex);
+    gl.uniformMatrix3fv(gl.getUniformLocation(prog, 'u_H'), false, new Float32Array(m)); gl.uniform2f(gl.getUniformLocation(prog, 'u_res'), cw, ch); gl.uniform4f(gl.getUniformLocation(prog, 'u_rect'), GX, GY, GW, GH); gl.uniform1i(gl.getUniformLocation(prog, 'u_tex'), 0);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
   async function camStart() {

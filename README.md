@@ -2,7 +2,7 @@
 Juego de realidad aumentada sobre papel: se imprime la hoja del laberinto, se apunta la cámara del celular y el juego se proyecta sobre el impreso, siguiendo su posición y perspectiva.
 
 ## Cómo usarlo
-1. Imprime `print/hoja-laberinto.pdf` (A4) , `print/hoja-laberinto-A2.pdf` (A2, 420 x 594 mm, 300 ppp) o `print/hoja-laberinto-1m.pdf` (1 m de ancho x 1,414 m de alto, 150 ppp), sin escalar; papel mate, sin brillos) y ponla sobre una superficie plana con buena luz.
+1. Imprime (fondo blanco, lineas azul oscuro neon) `print/hoja-laberinto.pdf` (A4) , `print/hoja-laberinto-A2.pdf` (A2, 420 x 594 mm, 300 ppp) o `print/hoja-laberinto-80cm.pdf` (80 cm de ancho x 113,1 cm de alto, 190 ppp), `print/hoja-laberinto-1m.pdf` (1 m de ancho x 1,414 m de alto, 150 ppp), sin escalar; papel mate, sin brillos) y ponla sobre una superficie plana con buena luz.
 2. Abre el juego en el celular (GitHub Pages), pulsa PLAY y apunta la cámara al papel. Deben verse los 4 cuadros negros de las esquinas.
 3. Desliza el dedo para mover la calabaza. Si pierdes los cuadros, el juego se pausa y sigue al volver a enfocarlos.
 
